@@ -108,6 +108,11 @@ class Server:
                         if self.verbose: logger.info(f"DELETE TABLE: table_name={table_name}")
                         self.db.delete_table(table_name)
                         client_socket.sendall(f"Table '{table_name}' deleted successfully!".encode())
+                    elif request.startswith("SHOW TABLES"):
+                        if self.verbose: logger.info("SHOW TABLES")
+                        tables = os.listdir(DATA_DIRECTORY)
+                        tables = [table.replace('.ayp', '') for table in tables]
+                        client_socket.sendall(json.dumps(tables).encode())
                     else:
                         if self.verbose: logger.warning("Invalid request!")
                         client_socket.sendall(b"Invalid request!")
