@@ -39,15 +39,29 @@ class Database:
         if not os.path.exists(file_path):
             with open(file_path, 'w') as file:
                 json.dump([], file)
+            return True  # Table created successfully
+        else:
+            logger.warning(f"Table '{table_name}' already exists!")
+            return False  # Table already exists
 
     def insert_row(self, table_name, row_data):
         data = self.load_table_data(table_name)
         data.append(row_data)
         self.save_table_data(table_name, data)
+        return True
 
     def get_table_data(self, table_name):
         return self.load_table_data(table_name)
 
+    def delete_table(self, table_name):
+        file_path = os.path.join(DATA_DIRECTORY, f"{table_name}.ayp")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Table '{table_name}' deleted successfully!")
+            return True
+        else:
+            logger.warning(f"Table '{table_name}' does not exist!")
+        return False
 # Server handling client connections
 class Server:
     def __init__(self, db, host, port, verbose=False):
@@ -89,6 +103,11 @@ class Server:
                         if self.verbose: logger.info(f"SELECT * FROM: table_name={table_name}")
                         table_data = self.db.get_table_data(table_name)
                         client_socket.sendall(json.dumps(table_data).encode())
+                    elif request.startswith("DELETE TABLE"):
+                        *_, table_name = request.split(" ", 2)
+                        if self.verbose: logger.info(f"DELETE TABLE: table_name={table_name}")
+                        self.db.delete_table(table_name)
+                        client_socket.sendall(f"Table '{table_name}' deleted successfully!".encode())
                     else:
                         if self.verbose: logger.warning("Invalid request!")
                         client_socket.sendall(b"Invalid request!")
