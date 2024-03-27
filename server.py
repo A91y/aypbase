@@ -3,35 +3,44 @@ import socket
 import os
 import json
 
-# Define the file extension for storing data
-DATA_FILE_EXTENSION = ".ayp"
+# Define the directory for storing data
+DATA_DIRECTORY = "data"
 
 # Database storage using files
 class Database:
-    def __init__(self, filename):
-        self.filename = filename
-        self.tables = {}
-        if os.path.exists(filename):
-            with open(filename, 'r') as file:
-                self.tables = json.load(file)
-        else:
-            self.save()
+    def __init__(self):
+        self.create_data_directory()
 
-    def save(self):
-        with open(self.filename, 'w') as file:
-            json.dump(self.tables, file)
+    def create_data_directory(self):
+        if not os.path.exists(DATA_DIRECTORY):
+            os.makedirs(DATA_DIRECTORY)
+
+    def save_table_data(self, table_name, data):
+        file_path = os.path.join(DATA_DIRECTORY, f"{table_name}.ayp")
+        with open(file_path, 'w') as file:
+            json.dump(data, file)
+
+    def load_table_data(self, table_name):
+        file_path = os.path.join(DATA_DIRECTORY, f"{table_name}.ayp")
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                return json.load(file)
+        else:
+            return []
 
     def create_table(self, table_name):
-        if table_name not in self.tables:
-            self.tables[table_name] = []
+        file_path = os.path.join(DATA_DIRECTORY, f"{table_name}.ayp")
+        if not os.path.exists(file_path):
+            with open(file_path, 'w') as file:
+                json.dump([], file)
 
     def insert_row(self, table_name, row_data):
-        if table_name in self.tables:
-            self.tables[table_name].append(row_data)
-            self.save()
+        data = self.load_table_data(table_name)
+        data.append(row_data)
+        self.save_table_data(table_name, data)
 
     def get_table_data(self, table_name):
-        return self.tables.get(table_name, [])
+        return self.load_table_data(table_name)
 
 # Server handling client connections
 class Server:
@@ -81,7 +90,6 @@ class Server:
                     break
 
 if __name__ == "__main__":
-    filename = "data" + DATA_FILE_EXTENSION
-    db = Database(filename)
+    db = Database()
     server = Server(db, "localhost", 12345)
     server.start()
