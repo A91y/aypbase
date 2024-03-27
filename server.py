@@ -53,25 +53,32 @@ class Server:
     def handle_client(self, client_socket):
         with client_socket:
             while True:
-                request = client_socket.recv(1024).decode().strip()
-                if not request:
+                try:
+                    request = client_socket.recv(1024).decode().strip()
+                    if not request:
+                        break
+                    if request.startswith("CREATE TABLE"):
+                        *_, table_name = request.split(" ", 2)
+                        print("----CREATE TABLE----", "\ntable_name:", table_name, "\n----CREATE TABLE----")
+                        self.db.create_table(table_name)
+                        client_socket.sendall(f"Table '{table_name}' created successfully!".encode())
+                    elif request.startswith("INSERT INTO"):
+                        *_, table_name, row_data = request.split(" ", 3)
+                        print("----INSERT INTO----", "\ntable_name:", table_name, "\nrow_data:", row_data, "\n----INSERT INTO----")
+                        row_data = json.loads(row_data)
+                        self.db.insert_row(table_name, row_data)
+                        client_socket.sendall(b"Row inserted successfully!")
+                    elif request.startswith("SELECT * FROM"):
+                        *_, table_name = request.split(" ", 3)
+                        print("----SELECT * FROM----", "\ntable_name:", table_name, "\n----SELECT * FROM----")
+                        table_data = self.db.get_table_data(table_name)
+                        client_socket.sendall(json.dumps(table_data).encode())
+                    else:
+                        client_socket.sendall(b"Invalid request!")
+                except Exception as e:
+                    print("Error:", e)
+                    client_socket.sendall(str(e).encode())
                     break
-                if request.startswith("CREATE TABLE"):
-                    *_, table_name = request.split(" ", 2)
-                    print("----CREATE TABLE----", "\ntable_name:", table_name, "\n----CREATE TABLE----")
-                    self.db.create_table(table_name)
-                    client_socket.sendall(f"Table '{table_name}' created successfully!".encode())
-                elif request.startswith("INSERT INTO"):
-                    *_, table_name, row_data = request.split(" ", 3)
-                    print("----INSERT INTO----", "\ntable_name:", table_name, "\nrow_data:", row_data, "\n----INSERT INTO----")
-                    row_data = json.loads(row_data)
-                    self.db.insert_row(table_name, row_data)
-                    client_socket.sendall(b"Row inserted successfully!")
-                elif request.startswith("SELECT * FROM"):
-                    *_, table_name = request.split(" ", 3)
-                    print("----SELECT * FROM----", "\ntable_name:", table_name, "\n----SELECT * FROM----")
-                    table_data = self.db.get_table_data(table_name)
-                    client_socket.sendall(json.dumps(table_data).encode())
 
 if __name__ == "__main__":
     filename = "data" + DATA_FILE_EXTENSION
